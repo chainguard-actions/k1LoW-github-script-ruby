@@ -1,0 +1,23 @@
+coverage:
+  acceptable: 50%
+codeToTestRatio:
+  code:
+    - '**/*.rb'
+    - '!test/*.rb'
+  test:
+    - '**/*.rb'
+testExecutionTime:
+  acceptable: 1min
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+push:
+  if: is_default_branch
+summary:
+  if: true
+comment:
+  if: is_pull_request
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}

@@ -1,0 +1,48 @@
+name: GitHub Script for Ruby
+description: Run simple Ruby scripts using the GitHub client
+branding:
+  color: red
+  icon: code
+inputs:
+  script:
+    description: The script to run
+    required: false
+  github-token:
+    description: The GitHub token used to create an authenticated client
+    default: ${{ github.token }}
+    required: false
+  debug:
+    description: Whether to tell the GitHub client to log details of its requests
+    default: false
+  result-encoding:
+    description: Either "string" or "json" (default "json") how the result will be encoded
+    default: json
+  gemfile:
+    description: Gemfile code to use instead of the default Gemfile
+    required: false
+  gemfile-path:
+    description: Gemfile path to use instead of the default Gemfile
+    required: false
+  pre-command:
+    description: The command to execute in the environment of the action, before run the script.
+    required: false
+  command:
+    description: The command to execute in the environment of the action, instead of running the script.
+    required: false
+  ruby-version:
+    description: Version of Ruby to use.
+    required: false
+outputs:
+  result:
+    description: The return value of the script, stringified with `JSON.#generate`
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    # Ruby can get environment variables with hyphenated names,
+    # but it cannot get environment variables with hyphenated names via docker command
+    INPUT_RESULT_ENCODING: ${{ inputs.result-encoding }}
+    INPUT_GEMFILE_PATH: ${{ inputs.gemfile-path }}
+    INPUT_PRE_COMMAND: ${{ inputs.pre-command }}
+    INPUT_RUBY_VERSION: ${{ inputs.ruby-version }}

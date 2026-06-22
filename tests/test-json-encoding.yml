@@ -1,0 +1,31 @@
+name: Test JSON result encoding with hash
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          command: ruby -e "require 'json'; File.open(ENV['GITHUB_OUTPUT'],'a'){|f|f.puts 'result='+JSON.generate({name:'test',value:123})}"
+          github-token: "dummy-token"
+      - name: Assert result is valid JSON with expected fields
+        env:
+          ACTUAL: ${{ steps.action.outputs.result }}
+        run: |
+          echo "actual: $ACTUAL"
+          NAME=$(echo "$ACTUAL" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['name'])")
+          VALUE=$(echo "$ACTUAL" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d['value'])")
+          echo "name: $NAME"
+          echo "value: $VALUE"
+          if [ "$NAME" != "test" ]; then
+            echo "FAIL: expected name='test', got '$NAME'"
+            exit 1
+          fi
+          if [ "$VALUE" != "123" ]; then
+            echo "FAIL: expected value='123', got '$VALUE'"
+            exit 1
+          fi
+          echo "PASS"

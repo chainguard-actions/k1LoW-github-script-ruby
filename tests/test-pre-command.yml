@@ -1,0 +1,24 @@
+name: Test pre-command execution
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          pre-command: echo "pre-command ran" > /tmp/pre-command-output.txt
+          command: ruby -e "File.open(ENV['GITHUB_OUTPUT'],'a'){|f|f.puts 'result=script ran'}"
+          github-token: "dummy-token"
+      - name: Assert script result is returned
+        env:
+          ACTUAL: ${{ steps.action.outputs.result }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "script ran" ]; then
+            echo "FAIL: expected 'script ran', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

@@ -1,0 +1,26 @@
+name: Test gemfile inline input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          script: |
+            "hello from gemfile test"
+          result-encoding: string
+          gemfile: |
+            source "https://rubygems.org"
+      - name: Assert result
+        env:
+          ACTUAL: ${{ steps.action.outputs.result }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "hello from gemfile test" ]; then
+            echo "FAIL: expected 'hello from gemfile test', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

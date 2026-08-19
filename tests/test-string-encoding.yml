@@ -1,4 +1,4 @@
-name: Test basic Ruby script (JSON result)
+name: Test Ruby script with string result encoding
 on:
   workflow_dispatch:
 jobs:
@@ -10,17 +10,18 @@ jobs:
       - id: action
         uses: .
         env:
-          INPUT_RESULT_ENCODING: json
+          INPUT_RESULT_ENCODING: string
         with:
-          script: "42"
+          result-encoding: string
+          script: '"hello world"'
 
-      - name: Assert result is JSON-encoded integer
+      - name: Assert result is plain string (not JSON-quoted)
         env:
           ACTUAL: ${{ steps.action.outputs.result }}
         run: |
           echo "actual: $ACTUAL"
-          if [ "$ACTUAL" != "42" ]; then
-            echo "FAIL: expected '42' but got '$ACTUAL'"
+          if [ "$ACTUAL" != "hello world" ]; then
+            echo "FAIL: expected 'hello world' but got '$ACTUAL'"
             exit 1
           fi
           echo "PASS"

@@ -1,4 +1,4 @@
-name: Test gemfile-path input
+name: Test gemfile-path input (path to custom Gemfile)
 on:
   workflow_dispatch:
 jobs:
@@ -6,21 +6,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - id: action
         uses: .
         with:
-          gemfile-path: ${{ github.workspace }}/actions/hardened/k1LoW--github-script-ruby/v2.6.1/tests/fixtures/Gemfile
-          script: |
-            require 'json'
-            JSON.generate({status: "ok"})
+          # The Docker container mounts GITHUB_WORKSPACE at /github/workspace,
+          # so the fixture Gemfile is accessible at that path inside the container.
+          gemfile-path: /github/workspace/hardened/tests/fixtures/custom-gemfile/Gemfile
           result-encoding: string
-      - name: Assert result output
+          script: |
+            "gemfile-path-ok"
+
+      - name: Assert result from gemfile-path
         env:
           ACTUAL: ${{ steps.action.outputs.result }}
         run: |
           echo "actual: $ACTUAL"
-          if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected non-empty result"
+          if [ "$ACTUAL" != "gemfile-path-ok" ]; then
+            echo "FAIL: expected 'gemfile-path-ok' but got '$ACTUAL'"
             exit 1
           fi
           echo "PASS"

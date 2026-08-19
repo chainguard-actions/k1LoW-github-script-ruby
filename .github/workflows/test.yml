@@ -1,0 +1,49 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Build base image
+        run: docker build -f docker/Dockerfile . -t github-script-ruby-base:test
+      - name: Run test
+        env:
+          WORKSPACE: ${{ github.workspace }}
+        run: docker run --rm -v "$WORKSPACE":/workspace -w /workspace github-script-ruby-base:test bash -c "bundle install && bundle exec ruby test/run_test.rb"
+      - uses: k1LoW/octocov-action@b3b6ee60482a667950f87553abf1df63217235d9 # v1
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'table'
+      - name: Build
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: docker build -f docker/Dockerfile . -t "ghcr.io/k1low/github-script-ruby-base:$GIT_SHA"
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # master
+        with:
+          image-ref: 'ghcr.io/k1low/github-script-ruby-base:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'

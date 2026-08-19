@@ -1,4 +1,4 @@
-name: Test gemfile input
+name: Test gemfile input (inline Gemfile code)
 on:
   workflow_dispatch:
 jobs:
@@ -6,23 +6,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - id: action
         uses: .
         with:
           gemfile: |
-            source "https://rubygems.org"
-            gem "json"
-          script: |
-            require 'json'
-            JSON.generate({status: "ok"})
+            source 'https://rubygems.org'
+            gem 'faraday-retry', '~> 2.0'
+            gem 'octokit', '~> 4.0'
+            gem 'base64'
+            gem 'ostruct'
           result-encoding: string
-      - name: Assert result output
+          script: |
+            "gemfile-ok"
+
+      - name: Assert result from custom gemfile
         env:
           ACTUAL: ${{ steps.action.outputs.result }}
         run: |
           echo "actual: $ACTUAL"
-          if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected non-empty result"
+          if [ "$ACTUAL" != "gemfile-ok" ]; then
+            echo "FAIL: expected 'gemfile-ok' but got '$ACTUAL'"
             exit 1
           fi
           echo "PASS"

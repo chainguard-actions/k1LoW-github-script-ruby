@@ -1,4 +1,4 @@
-name: Test ruby-version input (specific Ruby version)
+name: Test Ruby script accessing GitHub context
 on:
   workflow_dispatch:
 jobs:
@@ -9,19 +9,20 @@ jobs:
 
       - id: action
         uses: .
+        env:
+          INPUT_RESULT_ENCODING: string
         with:
-          ruby-version: "3.2.2"
           result-encoding: string
           script: |
-            RUBY_VERSION
+            context.event_name
 
-      - name: Assert result contains ruby version
+      - name: Assert context event_name is accessible
         env:
           ACTUAL: ${{ steps.action.outputs.result }}
         run: |
           echo "actual: $ACTUAL"
           if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected a Ruby version string but got empty result"
+            echo "FAIL: expected non-empty event_name from context"
             exit 1
           fi
-          echo "PASS: got Ruby version: $ACTUAL"
+          echo "PASS: event_name = $ACTUAL"

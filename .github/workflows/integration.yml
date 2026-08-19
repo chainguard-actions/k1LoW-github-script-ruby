@@ -1,0 +1,196 @@
+name: Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions: {}
+
+jobs:
+  test-return:
+    name: 'The return value of `script` can be retrieved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - id: output-set
+        uses: ./
+        with:
+          script: core.get_input('input')
+          result-encoding: string
+          input: hello world
+      - env:
+          RESULT: ${{ steps.output-set.outputs.result }}
+        run: |
+          if [[ "$RESULT" != "hello world" ]]; then
+            exit 1
+          fi
+
+  test-context:
+    name: 'Can get values from `context`'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - id: context-payload
+        uses: ./
+        with:
+          script: |
+            exit 1 unless context.payload.repository.default_branch == 'main'
+      - id: context-job
+        uses: ./
+        with:
+          script: |
+            exit 1 unless context.job == 'test-context'
+
+  test-gems:
+    name: 'Not affected by gems in other steps'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ruby/setup-ruby@a30dfa457ad68707b8b910ac3a244714b61c0626 # v1
+        with:
+          ruby-version: 2.7
+      - run: |
+          rm -f Gemfile Gemfile.lock
+          bundle init
+          echo "gem 'rubocop', '1.22.1'" >> Gemfile
+          bundle install
+      - uses: ./
+        with:
+          script: |
+            require 'rubygems'
+            exit 1 if Gem::Specification.all_names.include? 'rubocop-1.22.1'
+
+  test-gemfile:
+    name: 'Can change Gemfile to use'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./
+        with:
+          script: |
+            require 'rubygems'
+            exit 1 unless Gem::Specification.all_names.include? 'rubocop-1.22.1'
+            exit 1 unless Gem::Specification.all_names.none? { |gem| gem.include? 'octokit' }
+          gemfile: |
+            source 'https://rubygems.org'
+            gem 'rubocop', '1.22.1'
+
+  test-gemfile-path:
+    name: 'Can change Gemfile to use (gemfile-path)'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./
+        with:
+          script: |
+            require 'rubygems'
+            puts 'in script'
+            exit 1 unless Gem::Specification.all_names.include? 'rubocop-1.22.1'
+            exit 1 unless Gem::Specification.all_names.none? { |gem| gem.include? 'octokit' }
+          gemfile-path: test/Gemfile.test
+
+  test-ruby-version:
+    name: 'Can change Ruby version to use'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./
+        with:
+          script: |
+            exit 1 unless RUBY_VERSION == '3.1.7'
+            exit 1 unless Gem::Specification.all_names.any? { |gem| gem.include? 'octokit' }
+          ruby-version: 3.1.7
+
+  test-slack-tmp:
+    name: 'Post message to Slack #general channel'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+    - name: 'Post message to Slack channel'
+      uses: ./
+      with:
+        script: |
+          require 'slack-ruby-client'
+          Slack.configure do |config|
+            config.token = ENV['SLACK_API_TOKEN']
+          end
+          client = Slack::Web::Client.new
+          begin
+            client.chat_postMessage(channel: '#random', text: 'Hello, Slack bot!')
+          rescue Slack::Web::Api::Errors::NotAuthed
+            'ok'
+          end
+        gemfile: |
+          source 'https://rubygems.org'
+          gem 'octokit', '~> 4.0'
+          gem 'slack-ruby-client'
+      env:
+        SLACK_API_TOKEN: ${{ secrets.SLACK_API_TOKEN }}
+
+  test-debug:
+    name: "Show log details of GitHub client's requests"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./
+        with:
+          script: |
+            github.contributors('k1LoW/github-script-ruby', true).each { |c| puts c.login }
+            exit 1 unless github.contributors('k1LoW/github-script-ruby', true).one? { |c| c.login == 'k1LoW' }
+          result-encoding: string
+          debug: true
+
+  test-pre-command:
+    name: "Execute pre-command:, before run script:"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./
+        with:
+          pre-command: |
+            echo 'hello'
+
+            echo 'world'
+
+            apt-get update
+            apt-get install -y curl
+            export TBLS_VERSION=1.52.0
+            curl -L https://git.io/dpkg-i-from-url | bash -s -- https://github.com/k1LoW/tbls/releases/download/v$TBLS_VERSION/tbls_$TBLS_VERSION-1_amd64.deb
+            tbls version
+          script: |
+            puts `tbls version`
+
+  test-command:
+    name: "Execute command:, instead of running script:"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./
+        with:
+          command: |
+            ruby -v
+          script: |
+            exit 1 # This will not be executed
+          ruby-version: 3.1.7

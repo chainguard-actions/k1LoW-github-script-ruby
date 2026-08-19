@@ -1,0 +1,37 @@
+name: Test Ruby script returning a JSON object
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        env:
+          INPUT_RESULT_ENCODING: json
+        with:
+          result-encoding: json
+          script: |
+            { "foo" => "bar", "count" => 3 }
+
+      - name: Assert result is valid JSON object
+        env:
+          ACTUAL: ${{ steps.action.outputs.result }}
+        run: |
+          echo "actual: $ACTUAL"
+          # Parse the JSON and check the values
+          FOO=$(echo "$ACTUAL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['foo'])")
+          COUNT=$(echo "$ACTUAL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['count'])")
+          echo "foo: $FOO"
+          echo "count: $COUNT"
+          if [ "$FOO" != "bar" ]; then
+            echo "FAIL: expected foo='bar' but got '$FOO'"
+            exit 1
+          fi
+          if [ "$COUNT" != "3" ]; then
+            echo "FAIL: expected count=3 but got '$COUNT'"
+            exit 1
+          fi
+          echo "PASS"

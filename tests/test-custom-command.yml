@@ -1,4 +1,4 @@
-name: Test basic Ruby script (JSON result)
+name: Test custom command instead of script
 on:
   workflow_dispatch:
 jobs:
@@ -10,17 +10,17 @@ jobs:
       - id: action
         uses: .
         env:
-          INPUT_RESULT_ENCODING: json
+          INPUT_COMMAND: "echo 'result=custom-works' >> \"$GITHUB_OUTPUT\""
         with:
-          script: "42"
+          command: "echo 'result=custom-works' >> \"$GITHUB_OUTPUT\""
 
-      - name: Assert result is JSON-encoded integer
+      - name: Assert custom command ran and set output
         env:
           ACTUAL: ${{ steps.action.outputs.result }}
         run: |
           echo "actual: $ACTUAL"
-          if [ "$ACTUAL" != "42" ]; then
-            echo "FAIL: expected '42' but got '$ACTUAL'"
+          if [ "$ACTUAL" != "custom-works" ]; then
+            echo "FAIL: expected 'custom-works' but got '$ACTUAL'"
             exit 1
           fi
           echo "PASS"

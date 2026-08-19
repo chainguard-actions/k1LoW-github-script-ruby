@@ -1,4 +1,4 @@
-name: Test pre-command input
+name: Test Ruby script with pre-command
 on:
   workflow_dispatch:
 jobs:
@@ -6,20 +6,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - id: action
         uses: .
+        env:
+          INPUT_RESULT_ENCODING: string
+          INPUT_PRE_COMMAND: "echo 'pre-command executed' > /tmp/pre_command_marker.txt"
         with:
-          pre-command: echo "pre-command executed"
-          script: |
-            "hello from script"
           result-encoding: string
-      - name: Assert result output
+          pre-command: "echo 'pre-command executed' > /tmp/pre_command_marker.txt"
+          script: |
+            File.read('/tmp/pre_command_marker.txt').strip
+
+      - name: Assert pre-command ran before script
         env:
           ACTUAL: ${{ steps.action.outputs.result }}
         run: |
           echo "actual: $ACTUAL"
-          if [ "$ACTUAL" != "hello from script" ]; then
-            echo "FAIL: expected 'hello from script', got '$ACTUAL'"
+          if [ "$ACTUAL" != "pre-command executed" ]; then
+            echo "FAIL: expected 'pre-command executed' but got '$ACTUAL'"
             exit 1
           fi
           echo "PASS"
